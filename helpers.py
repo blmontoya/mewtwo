@@ -10,9 +10,9 @@ def get_point_cloud(file_name):
     resmission = scan[:, 3]
     return xyz, resmission 
 
-def uv_proj(x, y, z, f_up, f, r, w, h):
+def uv_proj(x, y, z, f_down, f, r, w, h):
     u = 0.5 * (1 - np.arctan2(y,x) / np.pi) * w
-    v = (1 - (np.arcsin(z / r) + f_up) / f) * h
+    v = (1 - ((np.arcsin(z / r) + np.abs(f_down)) / f)) * h
 
     u = np.floor(u).astype(np.int32)
     v = np.floor(v).astype(np.int32)

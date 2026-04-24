@@ -54,7 +54,11 @@ class RangeData(Dataset):
 
         # 2. Get new coordinates (u, v) 
         r = np.linalg.norm(xyz, axis=1)
-        u, v = uv_proj(x, y, z, self.f_up, self.f, r, self.W, self.W)
+        u, v = uv_proj(x, y, z, self.f_down, self.f, r, self.W, self.H)
+        u = np.clip(u, 0, self.W - 1)
+        v = np.clip(v, 0, self.H - 1)
+        #print("u min/max:", u.min(), u.max()) #want in [0, W-1]
+        #print("v min/max:", v.min(), v.max()) #want in [0, H-1]
 
         ranges = np.zeros((self.H, self.W), dtype=np.float32)
         xyz_proj = np.zeros((self.H, self.W, 3), dtype=np.float32)
@@ -65,8 +69,9 @@ class RangeData(Dataset):
         # 3. Assign points in descending range order (closer points will override further ones)
         order = np.argsort(r)[::-1] 
 
-        for i in order: 
-            row, col = u[i], v[i]
+        for i in order:
+            #breakpoint() 
+            row, col = v[i], u[i]
 
             ranges[row, col] = r[i]
             xyz_proj[row, col] = xyz[i]
@@ -79,7 +84,7 @@ class RangeData(Dataset):
             ranges[..., None], 
             xyz_proj,
             remission_proj[..., None]
-        ])
+        ], axis=-1)
 
         input_img = torch.from_numpy(pts).permute(2, 0, 1).float()
         input_labels = torch.from_numpy(label_proj)
