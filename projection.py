@@ -2,6 +2,7 @@ from torch.utils.data import Dataset
 import numpy as np
 import torch
 from pathlib import Path 
+import os
 
 import hyperparameters as hp
 import params as p
@@ -41,11 +42,17 @@ class RangeData(Dataset):
             pojected coordinate (u,v)
             label -- (H, W) representing label for each projected coordinate (u,v)
             mask -- (H, W) set to "0" if the pixel is empty 
+            u -- (N,) u coordinate for each 3D pixel
+            v == (N,) v coordinate for each 3D pixel
 
         """
-        
         # 1. Get the scan at the given index and extract the point cloud from it
         scan_path = self.files[idx]
+        
+        #for later reprojection formatting, save parts of the file name
+        scan_name = os.path.basename(scan_path).replace("bin", "")
+        seq = scan_path.split("sequences/")[1].split("/")[0]
+
         label_path = Path(str(scan_path).replace("velodyne", "labels").replace(".bin", ".label"))
         labels = np.fromfile(label_path, dtype=np.uint32).reshape((-1))
         
@@ -65,12 +72,12 @@ class RangeData(Dataset):
         remission_proj = np.zeros((self.H, self.W), dtype=np.float32)
         label_proj = np.zeros((self.H, self.W), dtype=np.uint32)
         mask = np.zeros((self.H, self.W), dtype=np.float32)
+        proj_idx = -np.ones((self.H, self.W), dtype=np.int32) #init as -1 to not confuse with actual indecies
         
         # 3. Assign points in descending range order (closer points will override further ones)
         order = np.argsort(r)[::-1] 
 
         for i in order:
-            #breakpoint() 
             row, col = v[i], u[i]
 
             ranges[row, col] = r[i]
@@ -78,6 +85,7 @@ class RangeData(Dataset):
             remission_proj[row, col] = remission[i]
             label_proj[row,col] = labels[i]
             mask[row, col] = 1.0 
+            proj_idx[row, col] = i
 
         # 4. Concatenate range, x, y, z, and remission to construct pts  
         pts = np.concatenate([
@@ -90,5 +98,7 @@ class RangeData(Dataset):
         input_labels = torch.from_numpy(label_proj)
         mask = torch.from_numpy(mask).float()
 
-        return (input_img, input_labels, mask)
+        u = np.array(u)
+        v = np.array(v)
+        return (input_img, input_labels, mask, u, v, scan_name, seq)
 

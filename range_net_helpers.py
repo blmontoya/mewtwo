@@ -6,7 +6,7 @@ import params as p
 def train_one_epoch(model, loader, optimizer, criterion):
     model.train()
     total_loss = 0.0
-    for imgs, labels, masks in loader:
+    for imgs, labels, _, _, _ in loader:
         imgs = imgs.cuda()
         labels = labels.cuda().long()
 
