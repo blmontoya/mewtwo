@@ -8,7 +8,7 @@ NUM_EPOCHS = 15
 BATCH_SIZE = 64
 GAMMA = 1 #? 
 LR = 0.001
-STEP_SIZE = 0.5
+STEP_SIZE = 0.01
 
 # KNN Hyperparameters 
 CUT_OFF = 1.0 #maximum allowed distance of a point considered a near neighbor

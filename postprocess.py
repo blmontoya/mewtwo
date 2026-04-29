@@ -4,12 +4,13 @@ from sklearn.neighbors import KDTree
 import hyperparameters as hp 
 import torch 
 
-def postprocess(xyz, range_preds, u, v, proj_idx, k=5):
+def postprocess(input_img, range_preds, u, v, proj_idx, k=5):
     """
     Runs KNN voting in 3D to clean up label bleeding.
 
     Args:
-        xyz:          (N, 3)  original 3D point positions
+        input_img:    (5, H, W) representing range, x, y, z, and remission for each
+                        projected coordinate (u,v)
         range_preds:  (H, W)  predicted class labels on range image
         u, v:         (N,)    pixel coords each point projected to
         k:            number of neighbors for voting
@@ -21,11 +22,12 @@ def postprocess(xyz, range_preds, u, v, proj_idx, k=5):
     device = range_preds.device
     H, W = range_preds.shape
     N = len(u)
+    range_img = input_img[0, :, :]
 
     #0: pad image so the neighbor extraction doesn't exceed the boundaries 
     S = hp.NBRHOOD_SIZE
     pad = S // 2
-    padded = torch.nn.functional.pad(range_preds, (pad, pad, pad, pad), mode="constant", value=0) #experiment with different types of padding
+    padded = torch.nn.functional.pad(range_img, (pad, pad, pad, pad), mode="constant", value=0) #experiment with different types of padding
 
     #1. create a [S^2, h*w] matrix containing unwrapped version of SxS neighborhood around each point 
     # Each column contains unwrapped version of neighborhood, and the column center contains the actual pixel's range 
@@ -58,10 +60,11 @@ def postprocess(xyz, range_preds, u, v, proj_idx, k=5):
     center_idx = (S * S) // 2
 
     #get actual N ranges for each point 
-    true_ranges = range_preds.view(-1) #flat actual ranges for each pt
+    true_ranges = range_img.reshape(-1) #flat actual ranges for each pt
     N_matrix[center_idx, :] = true_ranges
 
-    #4. Create [S^2, N] label matrix 
+    #4. Reshape label matrix to [S^2, N] accordingly 
+
 
     #5. Subtract the [1,N] range representation from each row of the [S^2, N] neighbor matrix
     # and pointwise apply absolute value

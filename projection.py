@@ -51,7 +51,7 @@ class RangeData(Dataset):
         
         #for later reprojection formatting, save parts of the file name
         scan_name = os.path.basename(scan_path).replace("bin", "")
-        seq = scan_path.split("sequences/")[1].split("/")[0]
+        seq = str(scan_path).split("sequences/")[1].split("/")[0]
 
         label_path = Path(str(scan_path).replace("velodyne", "labels").replace(".bin", ".label"))
         labels = np.fromfile(label_path, dtype=np.uint32).reshape((-1))
@@ -102,3 +102,9 @@ class RangeData(Dataset):
         v = np.array(v)
         return (input_img, input_labels, mask, u, v, scan_name, seq, proj_idx)
 
+    def get_splits():
+        return {
+            "train": [0,1,2,3,4,5,6,7,8,9,10],
+            "val": [8],
+            "test": [11,12,13,14,15,16,17,18,19,20,21]
+        }

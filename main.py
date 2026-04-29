@@ -10,19 +10,20 @@ import hyperparameters as hp
 import params as p
 import os 
 
-
 def main():
-    dataset = RangeData(root="dataset", sequences=["00", "01"])
-    loader = DataLoader(dataset, batch_size=4, shuffle=True)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # a small test
+    # dataset = RangeData(root="dataset", sequences=["00", "01"])
+    # loader = DataLoader(dataset, batch_size=1, shuffle=False)
     
-    for batch in loader: 
-        (img, labels, mask, u, v, _, _, proj_idx) = batch
-        # print(img.shape)
-        # print(labels.shape)
-        # print(mask.shape)
+    # for batch in loader: 
+    #     (img, labels, mask, u, v, _, _, proj_idx) = batch
+    #     print(img.shape)
+    #     print(labels.shape)
+    #     print(mask.shape)
 
     #breakpoint()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     splits = RangeData.get_splits()
     
     train_set = RangeData(p.ROOT, splits["train"])
@@ -65,7 +66,8 @@ def main():
         u = torch.from_numpy(u).to(device)
         v = torch.from_numpy(v).to(device)
 
-        preds = postprocess(input_img, pred_img, u, v, proj_idx)
+        preds = pred_img[v, u] #while we are still finishing up the postprocessing, use this
+        #preds = postprocess(input_img, pred_img, u, v, proj_idx)
 
         #save to file set to use with Semantic KITTI API
         preds = preds.cpu().numpy().astype(np.uint32) 
