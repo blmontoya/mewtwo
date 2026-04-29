@@ -1,8 +1,10 @@
 # postprocess.py
 import numpy as np
 from sklearn.neighbors import KDTree
+import hyperparameters as hp 
+import torch 
 
-def postprocess(xyz, range_preds, u, v, k=5):
+def postprocess(xyz, range_preds, u, v, proj_idx, k=5):
     """
     Runs KNN voting in 3D to clean up label bleeding.
 
@@ -11,21 +13,92 @@ def postprocess(xyz, range_preds, u, v, k=5):
         range_preds:  (H, W)  predicted class labels on range image
         u, v:         (N,)    pixel coords each point projected to
         k:            number of neighbors for voting
+        proj_idx:     (H, W) closest 3D point index associated with each pixel in the range image (-1 if no idx) 
 
     Returns:
         final_preds:  (N,)  refined per-point class labels
     """
-    # pull initial per-point labels straight from the range image
-    point_preds = range_preds[v, u].astype(np.int32)
+    device = range_preds.device
+    H, W = range_preds.shape
+    N = len(u)
 
-    # KDTree over xyz for fast neighbor lookup
-    tree = KDTree(xyz)
-    _, idxs = tree.query(xyz, k=k)
+    #0: pad image so the neighbor extraction doesn't exceed the boundaries 
+    S = hp.NBRHOOD_SIZE
+    pad = S // 2
+    padded = torch.nn.functional.pad(range_preds, (pad, pad, pad, pad), mode="constant", value=0) #experiment with different types of padding
 
-    # majority vote among each point's k neighbors
-    neighbor_labels = point_preds[idxs]
-    final_preds = np.array([
-        np.bincount(row).argmax()
-        for row in neighbor_labels
-    ])
-    return final_preds
+    #1. create a [S^2, h*w] matrix containing unwrapped version of SxS neighborhood around each point 
+    # Each column contains unwrapped version of neighborhood, and the column center contains the actual pixel's range 
+    
+    nbrs = torch.zeros(S * S, H * W) #output; N' in the algo
+
+    for up in range(H): 
+        for vp in range(W): 
+            col = up * W + vp
+            patch = padded[up: up + S, vp: vp + S]
+
+            #flatten to S^2 
+            nbrs[:, col] = patch.reshape(-1)
+
+    #2. Extend representation to a matrix of dim [S^2, N] w/ range neighborhood of all can points 
+    # Do this by indexing the unfolded image matrix 
+    N_matrix = torch.zeros(S * S, N) 
+
+    for i in range(N): 
+        ui = u[i]
+        vi = v[i]
+
+        col_img = ui * W + vi #get the column index in nbrs
+
+        #copy the neighborhood from nbrs
+        N_matrix[:, i] = nbrs[:, col_img]
+
+    #3. Replace center row of matrix with actual range readings for each point 
+    # Result: [S^2, N] matrix w/ range readings for points in the center row, and each column has SxS neighborhood
+    center_idx = (S * S) // 2
+
+    #get actual N ranges for each point 
+    true_ranges = range_preds.view(-1) #flat actual ranges for each pt
+    N_matrix[center_idx, :] = true_ranges
+
+    #4. Create [S^2, N] label matrix 
+
+    #5. Subtract the [1,N] range representation from each row of the [S^2, N] neighbor matrix
+    # and pointwise apply absolute value
+    # result: [S^2, N] matrix containing range difference between query point and surroundings
+
+    #6. Weigh the distances by inverse Gaussian kernel  
+
+    #7. Use argmin to find k closest points among S^2 candidates to get indexes for top k
+
+    #8. Check which k points fit the allowed "cut-off" threshold
+
+    #9. Accumulate votes from all the labels of points within the cutoff threshold
+    #done via gather add operation
+    #result: [C, N] matrix; C = num of classes; each row contains number of votes in its index class
+    
+    #10. argmax over columns to get [1,N] vector with labels for each point in the input
+    #this is the output! 
+
+
+
+                    
+            
+
+
+
+
+    # # pull initial per-point labels straight from the range image
+    # point_preds = range_preds[v, u].astype(np.int32)
+
+    # # KDTree over xyz for fast neighbor lookup
+    # tree = KDTree(xyz)
+    # _, idxs = tree.query(xyz, k=k)
+
+    # # majority vote among each point's k neighbors
+    # neighbor_labels = point_preds[idxs]
+    # final_preds = np.array([
+    #     np.bincount(row).argmax()
+    #     for row in neighbor_labels
+    # ])
+    # return final_preds

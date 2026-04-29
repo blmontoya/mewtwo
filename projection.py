@@ -100,5 +100,5 @@ class RangeData(Dataset):
 
         u = np.array(u)
         v = np.array(v)
-        return (input_img, input_labels, mask, u, v, scan_name, seq)
+        return (input_img, input_labels, mask, u, v, scan_name, seq, proj_idx)
 

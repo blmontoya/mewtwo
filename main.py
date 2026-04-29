@@ -4,6 +4,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 from projection import RangeData
 from range_net_helpers import train_one_epoch, evaluate
+from postprocess import postprocess
 from range_net import RangeNetCNN
 import hyperparameters as hp
 import params as p
@@ -16,7 +17,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     for batch in loader: 
-        (img, labels, mask, u, v, _, _) = batch
+        (img, labels, mask, u, v, _, _, proj_idx) = batch
         # print(img.shape)
         # print(labels.shape)
         # print(mask.shape)
@@ -55,7 +56,7 @@ def main():
     #evaluate IoU via reprojection into 3D
     model.eval() 
     for i in range(len(dataset)):
-        input_img, _, _, u, v, scan_name, seq = dataset[i]
+        input_img, _, _, u, v, scan_name, seq, proj_idx = dataset[i]
         input_img = input_img.unsqueeze(0).to(device) 
         with torch.no_grad():
             logits = model(input_img)
@@ -64,14 +65,14 @@ def main():
         u = torch.from_numpy(u).to(device)
         v = torch.from_numpy(v).to(device)
 
-        preds = pred_img[v, u] 
+        preds = postprocess(input_img, pred_img, u, v, proj_idx)
 
         #save to file set to use with Semantic KITTI API
-        point_preds = point_preds.cpu().numpy().astype(np.uint32) 
+        preds = preds.cpu().numpy().astype(np.uint32) 
         save_dir = os.path.join("method_predictions", "sequences", seq, "predictions")
         os.makedirs(save_dir, exist_ok=True)
         filepath =  os.path.join(save_dir, f"{scan_name}.label")
-        point_preds.tofile(filepath)
+        preds.tofile(filepath)
 
 if __name__ == '__main__':
     main()
