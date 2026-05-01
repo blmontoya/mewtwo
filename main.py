@@ -42,20 +42,20 @@ def main():
                               step_size=hp.STEP_SIZE, gamma=hp.GAMMA)
     criterion = torch.nn.CrossEntropyLoss(ignore_index=0)
 
-    # best_miou = 0.0
-    # for epoch in range(hp.NUM_EPOCHS):
-    #     train_loss = train_one_epoch(model, train_loader, optimizer, criterion, device)
-    #     torch.save(model.state_dict(), "best_model.pt")
+    best_miou = 0.0
+    for epoch in range(hp.NUM_EPOCHS):
+        train_loss = train_one_epoch(model, train_loader, optimizer, criterion, device)
+        torch.save(model.state_dict(), "best_model.pt")
 
-    #     # miou = evaluate(model, val_loader, device)
-    #     # scheduler.step()
+        miou = evaluate(model, val_loader, device)
+        scheduler.step()
 
-    #     # print(f"Epoch {epoch+1:03d} | Loss: {train_loss:.4f} | mIoU: {miou:.4f}")
+        print(f"Epoch {epoch+1:03d} | Loss: {train_loss:.4f} | mIoU: {miou:.4f}")
 
-    #     # # Save best checkpoint
-        # if miou > best_miou:
-        #     best_miou = miou
-        #     torch.save(model.state_dict(), "best_model.pt")
+        # # Save best checkpoint
+        if miou > best_miou:
+            best_miou = miou
+            torch.save(model.state_dict(), "best_model.pt")
 
     #reproject into 3D and create correct files for visualization
     state_dict = torch.load('best_model.pt', weights_only=True)
@@ -72,13 +72,13 @@ def main():
         v = torch.from_numpy(v).to(device)
 
         #convert the labels 0-33 back to original nums
-        with open("semantic-kitti-api/config/semantic-kitti.yaml", 'r') as f: 
-            data = yaml.safe_load(f)
-            ids = sorted(data['labels'].keys())
+        with open("config/semantic-kitti.yaml", 'r') as f: 
+            DATA = yaml.safe_load(f)
         
-        lookup = np.array(ids, dtype=np.uint32)
-        label_img = lookup[pred_img]
-
+        lookup = DATA["learning_map_inv"]
+        get_hash = np.vectorize(lookup.get, otypes=[int])
+        label_img = get_hash(pred_img)
+        
         preds = label_img[v, u] #while we are still finishing up the postprocessing, use this
         #preds = postprocess(input_img, pred_img, u, v, proj_idx)
 

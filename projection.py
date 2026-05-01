@@ -60,18 +60,12 @@ class RangeData(Dataset):
         instance_id = raw_labels >> 16
         raw_labels = raw_labels & 0xFFFF
         #convert the labels from random nums to 0-33 
-        with open("semantic-kitti-api/config/semantic-kitti.yaml", 'r') as f: 
-            data = yaml.safe_load(f)
-            ids = sorted(data['labels'].keys())
+        with open("config/semantic-kitti.yaml", 'r') as f: 
+            DATA = yaml.safe_load(f)
         
-        max_id = max(ids)
-        lookup = np.zeros(max_id + 1, dtype=np.int32) 
-
-        for i, og_id in enumerate(ids): 
-            lookup[og_id]  = i
-        
-        labels = lookup[raw_labels]
-        #breakpoint()
+        lookup = DATA["learning_map"]
+        get_hash = np.vectorize(lookup.get, otypes=[int])
+        labels = get_hash(raw_labels)
         
         xyz, remission = get_point_cloud(scan_path)
         x, y, z = xyz[:, 0], xyz[:, 1], xyz[:, 2]
@@ -122,13 +116,13 @@ class RangeData(Dataset):
         return (input_img, input_labels, mask, u, v, scan_name, seq, proj_idx)
 
     def get_splits():
-        return {
-            "train": [0],
-            "val": [1],
-            "test": [2]
-        }
         # return {
-        #     "train": [0,1,2,3,4,5,6,7,8,9,10],
-        #     "val": [8],
-        #     "test": [11,12,13,14,15,16,17,18,19,20,21]
+        #     "train": [0],
+        #     "val": [1],
+        #     "test": [2]
         # }
+        return {
+            "train": [1,2,3,4],
+            "val": [5],
+            "test": [6,7,8]
+        }

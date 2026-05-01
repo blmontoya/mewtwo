@@ -1,6 +1,5 @@
 # postprocess.py
 import numpy as np
-from sklearn.neighbors import KDTree
 import hyperparameters as hp 
 import torch 
 

@@ -4,7 +4,7 @@ H_RANGE = 64
 W_RANGE = 1024
 
 # CNN Training Hyperparameters
-NUM_EPOCHS = 1
+NUM_EPOCHS = 10
 BATCH_SIZE = 1
 GAMMA = 1 #? 
 LR = 0.001
