@@ -7,6 +7,7 @@ import os
 import hyperparameters as hp
 import params as p
 from helpers import get_point_cloud, uv_proj
+import yaml
 
 class RangeData(Dataset): 
     """Create a dataset of range images from Semantic KITTI point clouds
@@ -54,7 +55,23 @@ class RangeData(Dataset):
         seq = str(scan_path).split("sequences/")[1].split("/")[0]
 
         label_path = Path(str(scan_path).replace("velodyne", "labels").replace(".bin", ".label"))
-        labels = np.fromfile(label_path, dtype=np.uint32).reshape((-1))
+        raw_labels = np.fromfile(label_path, dtype=np.uint32).reshape((-1))
+
+        instance_id = raw_labels >> 16
+        raw_labels = raw_labels & 0xFFFF
+        #convert the labels from random nums to 0-33 
+        with open("semantic-kitti-api/config/semantic-kitti.yaml", 'r') as f: 
+            data = yaml.safe_load(f)
+            ids = sorted(data['labels'].keys())
+        
+        max_id = max(ids)
+        lookup = np.zeros(max_id + 1, dtype=np.int32) 
+
+        for i, og_id in enumerate(ids): 
+            lookup[og_id]  = i
+        
+        labels = lookup[raw_labels]
+        #breakpoint()
         
         xyz, remission = get_point_cloud(scan_path)
         x, y, z = xyz[:, 0], xyz[:, 1], xyz[:, 2]
@@ -93,6 +110,8 @@ class RangeData(Dataset):
             xyz_proj,
             remission_proj[..., None]
         ], axis=-1)
+        
+        #sbreakpoint()
 
         input_img = torch.from_numpy(pts).permute(2, 0, 1).float()
         input_labels = torch.from_numpy(label_proj)
@@ -104,7 +123,12 @@ class RangeData(Dataset):
 
     def get_splits():
         return {
-            "train": [0,1,2,3,4,5,6,7,8,9,10],
-            "val": [8],
-            "test": [11,12,13,14,15,16,17,18,19,20,21]
+            "train": [0],
+            "val": [1],
+            "test": [2]
         }
+        # return {
+        #     "train": [0,1,2,3,4,5,6,7,8,9,10],
+        #     "val": [8],
+        #     "test": [11,12,13,14,15,16,17,18,19,20,21]
+        # }

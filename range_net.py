@@ -1,6 +1,7 @@
 # rangenet.py
 import torch
 import torch.nn as nn
+import params as p 
 
 class ConvBNReLU(nn.Module):
     def __init__(self, in_ch, out_ch, kernel=3, padding=1, dilation=1):
@@ -38,7 +39,7 @@ class DecoderBlock(nn.Module):
         return self.conv(x)
 
 class RangeNetCNN(nn.Module):
-    def __init__(self, in_channels=5, num_classes=20):
+    def __init__(self, in_channels=5, num_classes=p.NUM_CLASSES):
         super().__init__()
         self.enc1 = EncoderBlock(in_channels, 32)
         self.enc2 = EncoderBlock(32, 64)
