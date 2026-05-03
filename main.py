@@ -60,12 +60,14 @@ def main():
         train_loss = train_one_epoch(model, train_loader, optimizer, criterion, device)
         torch.save(model.state_dict(), "best_model.pt")
 
-        miou = evaluate(model, val_loader, device)
+        # Prints out the mIoU and per-class IoU for the validation set at the end of each epoch
+        miou, per_class_iou = evaluate(model, val_loader, device)
+        print(f"Epoch {epoch+1:03d} | Loss: {train_loss:.4f} | mIoU: {miou:.4f}")
+        for cls_name, iou in per_class_iou.items():
+            print(f"  {cls_name:<20s}: {iou:.4f}")
         scheduler.step()
 
-        print(f"Epoch {epoch+1:03d} | Loss: {train_loss:.4f} | mIoU: {miou:.4f}")
-
-        # # Save best checkpoint
+        # Saves the best miou checkpoint
         if miou > best_miou:
             best_miou = miou
             torch.save(model.state_dict(), "best_model.pt")

@@ -23,25 +23,37 @@ def train_one_epoch(model, loader, optimizer, criterion, device):
 
     return total_loss / len(loader)
 
-
 def evaluate(model, loader, device, num_classes=p.NUM_CLASSES):
     model.eval()
     intersection = torch.zeros(num_classes)
     union = torch.zeros(num_classes)
 
+    # Learned class index to name mapping from Semantic KITTI dataset
+    class_names = {
+        0: "unlabeled", 1: "car", 2: "bicycle", 3: "motorcycle", 4: "truck",
+        5: "other-vehicle", 6: "person", 7: "bicyclist", 8: "motorcyclist",
+        9: "road", 10: "parking", 11: "sidewalk", 12: "other-ground",
+        13: "building", 14: "fence", 15: "vegetation", 16: "trunk",
+        17: "terrain", 18: "pole", 19: "traffic-sign"
+    }
+
     with torch.no_grad():
-        for imgs, labels, _, _, _, _, _, _ in loader:
+        for imgs, labels, mask, u, v, scan_name, seq, proj_idx in loader:
             imgs = imgs.to(device)
             labels = labels.to(device).long()
             preds = model(imgs).argmax(dim=1)
-
-            # Note to self: Class 0 is unlabeled and we skip it
             for cls in range(1, num_classes):
                 pred_c = (preds == cls).cpu()
                 label_c = (labels == cls).cpu()
                 intersection[cls] += (pred_c & label_c).sum()
                 union[cls] += (pred_c | label_c).sum()
 
-    valid = union[1:] > 0
-    iou = (intersection[1:][valid] / union[1:][valid])
-    return iou.mean().item()
+    # IoU for each class except class 0 (since that is unlabeled)
+    per_class_iou = {}
+    for cls in range(1, num_classes):
+        if union[cls] > 0:
+            iou = (intersection[cls] / union[cls]).item()
+            per_class_iou[class_names[cls]] = iou
+
+    miou = sum(per_class_iou.values()) / len(per_class_iou)
+    return miou, per_class_iou
