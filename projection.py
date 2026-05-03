@@ -115,14 +115,14 @@ class RangeData(Dataset):
         v = np.array(v)
         return (input_img, input_labels, mask, u, v, scan_name, seq, proj_idx)
 
-    def get_splits():
+    def get_splits(train, val, test):
         # return {
         #     "train": [0],
         #     "val": [1],
         #     "test": [2]
         # }
         return {
-            "train": [1,2,3,4],
-            "val": [5],
-            "test": [6,7,8]
+            "train": train,
+            "val": test,
+            "test": val
         }

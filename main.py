@@ -22,10 +22,23 @@ def main():
     #     print(labels.shape)
     #     print(mask.shape)
 
+    # # ensure that the GPU is working 
+    # print("CUDA available:", torch.cuda.is_available())
+    # print("CUDA device count:", torch.cuda.device_count())
+    # print("PyTorch CUDA version:", torch.version.cuda)
+
+    # if torch.cuda.is_available():
+    #     print("GPU:", torch.cuda.get_device_name(0))
+
     #breakpoint()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    #set which sequences we want as train, val, and test sets
+    train = [2]
+    val = [2]
+    test = [2]
 
-    splits = RangeData.get_splits()
+    splits = RangeData.get_splits(train, val, test)
     
     train_set = RangeData(p.ROOT, splits["train"])
     val_set   = RangeData(p.ROOT, splits["val"])
@@ -67,7 +80,8 @@ def main():
         with torch.no_grad():
             logits = model(input_img)
             pred_img = logits.argmax(dim=1)[0] #pick best class per pixel
-        
+            pred_img = pred_img.detach().cpu().numpy()
+
         u = torch.from_numpy(u).to(device)
         v = torch.from_numpy(v).to(device)
 
@@ -78,11 +92,13 @@ def main():
         lookup = DATA["learning_map_inv"]
         get_hash = np.vectorize(lookup.get, otypes=[int])
         label_img = get_hash(pred_img)
+        label_img = torch.from_numpy(label_img).long().to(device)
         
         preds = label_img[v, u] #while we are still finishing up the postprocessing, use this
         #preds = postprocess(input_img, pred_img, u, v, proj_idx)
 
         #save to file set to use with Semantic KITTI API
+        preds = preds.detach().cpu().numpy()
         save_dir = os.path.join("method_predictions", "sequences", seq, "predictions")
         os.makedirs(save_dir, exist_ok=True)
         filepath =  os.path.join(save_dir, f"{scan_name}.label")
