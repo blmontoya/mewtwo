@@ -34,8 +34,8 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     #set which sequences we want as train, val, and test sets
-    train = [2]
-    val = [2]
+    train = [3]
+    val = [3]
     test = [2]
 
     splits = RangeData.get_splits(train, val, test)
@@ -55,7 +55,13 @@ def main():
                               step_size=hp.STEP_SIZE, gamma=hp.GAMMA)
     criterion = torch.nn.CrossEntropyLoss(ignore_index=0)
 
+    #if want to start with pre-loaded weights model 
+    state_dict = torch.load('best_model.pt', weights_only=True)
+    model.load_state_dict(state_dict)
+    
     best_miou = 0.0
+    losses = []
+    ious = []
     for epoch in range(hp.NUM_EPOCHS):
         train_loss = train_one_epoch(model, train_loader, optimizer, criterion, device)
         torch.save(model.state_dict(), "best_model.pt")
@@ -71,10 +77,14 @@ def main():
         if miou > best_miou:
             best_miou = miou
             torch.save(model.state_dict(), "best_model.pt")
+        
+        losses.append(train_loss)
+        ious.append(miou)
+
+    np.save("train_loss.npy", np.array(losses))
+    np.save("mious.npy", np.array(ious))
 
     #reproject into 3D and create correct files for visualization
-    state_dict = torch.load('best_model.pt', weights_only=True)
-    model.load_state_dict(state_dict)
     model.eval() 
     for i in range(len(train_set)):
         input_img, _, _, u, v, scan_name, seq, proj_idx = train_set[i]
@@ -87,7 +97,7 @@ def main():
         u = torch.from_numpy(u).to(device)
         v = torch.from_numpy(v).to(device)
 
-        #convert the labels 0-33 back to original nums
+        #convert the logit labels back to the original classes
         with open("config/semantic-kitti.yaml", 'r') as f: 
             DATA = yaml.safe_load(f)
         
