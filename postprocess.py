@@ -4,7 +4,7 @@ import hyperparameters as hp
 import torch 
 import params as p
 
-def postprocess(input_img, range_preds, u, v, ranges, k=5):
+def postprocess(input_img, range_preds, u, v, ranges, device, k=5):
     """
     Runs KNN voting in 3D to clean up label bleeding.
 
@@ -19,12 +19,11 @@ def postprocess(input_img, range_preds, u, v, ranges, k=5):
     Returns:
         final_preds:  (N,)  refined per-point class labels
     """
-    device = range_preds.device
     H, W = range_preds.shape
     N = len(u)
-    I_range = input_img[0, :, :] #range image of size W x H 
-    I_label = range_preds #label image of predictions of size W x H
-    R = ranges 
+    I_range = torch.as_tensor(input_img[0, 0, :, :], device=device) #range image of size W x H 
+    I_label = torch.from_numpy(range_preds).to(device).long() #label image of predictions of size W x H
+    R = torch.as_tensor(ranges, device=device).float()
 
     #0: pad image so the neighbor extraction doesn't exceed the boundaries 
     S = hp.NBRHOOD_SIZE
@@ -34,28 +33,32 @@ def postprocess(input_img, range_preds, u, v, ranges, k=5):
 
     #1. create a [h*w, S^2] matrix containing unwrapped version of SxS neighborhood around each point 
     # Each column contains unwrapped version of neighborhood, and the column center contains the actual pixel's range 
-    nbrs = torch.zeros(H * W, S * S) #output; N' in the algo
+    nbrs = torch.zeros(H * W, S * S, device=device, dtype=I_range.dtype) #output; N' in the algo
 
-    for up in range(H): 
-        for vp in range(W): 
-            col = up * W + vp
-            patch = padded[up: up + S, vp: vp + S]
+    # print("padded shape:", padded.shape)
+    # print("H, W, S:", H, W, S)
+    # #breakpoint()
+
+    for vp in range(H): 
+        for up in range(W): 
+            pixel_idx = vp * W + up
+            patch = padded[vp: vp + S, up: up + S]
 
             #flatten to S^2 
-            nbrs[:, col] = patch.reshape(-1)
+            nbrs[pixel_idx, :] = patch.reshape(-1)
 
     #2. Extend representation to a matrix of dim [S^2, N] w/ range neighborhood of all can points 
     # Do this by indexing the unfolded image matrix 
-    N_matrix = torch.zeros(N, S*S) 
+    N_matrix = torch.zeros(N, S*S, device=device, dtype=I_range.dtype)
 
     for i in range(N): 
         ui = u[i]
         vi = v[i]
 
-        col_img = ui * W + vi #get the column index in nbrs
+        pixel_idx = vi * W + ui #get the row index in nbrs
 
         #copy the neighborhood from nbrs
-        N_matrix[:, i] = nbrs[:, col_img]
+        N_matrix[i, :] = nbrs[pixel_idx, :]
 
     #3. Replace center row of matrix with actual range readings for each point 
     # Result: [S^2, N] matrix w/ range readings for points in the center row, and each column has SxS neighborhood
@@ -63,26 +66,26 @@ def postprocess(input_img, range_preds, u, v, ranges, k=5):
     N_matrix[:, center_idx] = R
 
     #4. Reshape label matrix to
-    Lp = torch.zeros(H * W, S * S) #output; L' in the algo
+    Lp = torch.zeros(H * W, S * S, device=device, dtype=torch.long) #output; L' in the algo
 
-    for up in range(H): 
-        for vp in range(W): 
-            col = up * W + vp
-            patch = padded_labels[up: up + S, vp: vp + S]
+    for vp in range(H): 
+        for up in range(W): 
+            pixel_idx = vp * W + up
+            patch = padded_labels[vp: vp + S, up: up + S]
 
             #flatten to S^2 
-            nbrs[:, col] = patch.reshape(-1)
+            Lp[pixel_idx, :] = patch.reshape(-1)
 
-    L_matrix = torch.zeros(N, S*S) 
+    L_matrix = torch.zeros(N, S*S, device=device, dtype=torch.long)
 
     for i in range(N): 
         ui = u[i]
         vi = v[i]
 
-        col_img = ui * W + vi #get the column index in nbrs
+        pixel_idx = vi * W + ui #get the row index in nbrs
 
         #copy the neighborhood from nbrs
-        N_matrix[:, i] = nbrs[:, col_img]
+        L_matrix[i, :] = Lp[pixel_idx, :]
 
     #5. Compute distance to neighbors D for each point
     D = torch.abs(N_matrix - R[:, None])
@@ -126,10 +129,11 @@ def postprocess(input_img, range_preds, u, v, ranges, k=5):
 
     valid_mask = L_knn >= 0
     point_indices = torch.arange(N, device=device)[:, None].expand(-1, k)
-    V[point_indices[valid_mask], L_knn[valid_mask]] += 1
+    #breakpoint()
+    V[point_indices[valid_mask], L_knn[valid_mask].long()] += 1
 
     #10. argmax over columns to get [1,N] vector with labels for each point in the input
     #this is the output! 
-    L_consensus = torch.argmx(V, dim=1)
+    L_consensus = torch.argmax(V, dim=1)
 
     return L_consensus #(N,)
