@@ -5,4 +5,4 @@ F_DOWN = -24.8
 #Root Directory 
 ROOT = "dataset"
 
-NUM_CLASSES = 34
+NUM_CLASSES = 20

@@ -38,7 +38,7 @@ def evaluate(model, loader, device, num_classes=p.NUM_CLASSES):
     }
 
     with torch.no_grad():
-        for imgs, labels, mask, u, v, scan_name, seq, proj_idx in loader:
+        for imgs, labels, mask, u, v, scan_name, seq, r in loader:
             imgs = imgs.to(device)
             labels = labels.to(device).long()
             preds = model(imgs).argmax(dim=1)

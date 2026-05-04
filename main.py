@@ -34,8 +34,8 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     #set which sequences we want as train, val, and test sets
-    train = [3]
-    val = [3]
+    train = [1,2,3,4,5]
+    val = [6,7]
     test = [2]
 
     splits = RangeData.get_splits(train, val, test)
@@ -56,8 +56,8 @@ def main():
     criterion = torch.nn.CrossEntropyLoss(ignore_index=0)
 
     #if want to start with pre-loaded weights model 
-    state_dict = torch.load('best_model.pt', weights_only=True)
-    model.load_state_dict(state_dict)
+    # state_dict = torch.load('best_model.pt', weights_only=True)
+    # model.load_state_dict(state_dict)
     
     best_miou = 0.0
     losses = []
@@ -80,41 +80,41 @@ def main():
         
         losses.append(train_loss)
         ious.append(miou)
-
-    np.save("train_loss.npy", np.array(losses))
-    np.save("mious.npy", np.array(ious))
+        if epoch % 10 == 0: 
+            np.save("train_loss.npy", np.array(losses))
+            np.save("mious.npy", np.array(ious))
 
     #reproject into 3D and create correct files for visualization
-    model.eval() 
-    for i in range(len(train_set)):
-        input_img, _, _, u, v, scan_name, seq, proj_idx = train_set[i]
-        input_img = input_img.unsqueeze(0).to(device) 
-        with torch.no_grad():
-            logits = model(input_img)
-            pred_img = logits.argmax(dim=1)[0] #pick best class per pixel
-            pred_img = pred_img.detach().cpu().numpy()
+    # model.eval() 
+    # for i in range(len(train_set)):
+    #     input_img, _, _, u, v, scan_name, seq, proj_idx = train_set[i]
+    #     input_img = input_img.unsqueeze(0).to(device) 
+    #     with torch.no_grad():
+    #         logits = model(input_img)
+    #         pred_img = logits.argmax(dim=1)[0] #pick best class per pixel
+    #         pred_img = pred_img.detach().cpu().numpy()
 
-        u = torch.from_numpy(u).to(device)
-        v = torch.from_numpy(v).to(device)
+    #     u = torch.from_numpy(u).to(device)
+    #     v = torch.from_numpy(v).to(device)
 
-        #convert the logit labels back to the original classes
-        with open("config/semantic-kitti.yaml", 'r') as f: 
-            DATA = yaml.safe_load(f)
+    #     #convert the logit labels back to the original classes
+    #     with open("config/semantic-kitti.yaml", 'r') as f: 
+    #         DATA = yaml.safe_load(f)
         
-        lookup = DATA["learning_map_inv"]
-        get_hash = np.vectorize(lookup.get, otypes=[int])
-        label_img = get_hash(pred_img)
-        label_img = torch.from_numpy(label_img).long().to(device)
+    #     lookup = DATA["learning_map_inv"]
+    #     get_hash = np.vectorize(lookup.get, otypes=[int])
+    #     label_img = get_hash(pred_img)
+    #     label_img = torch.from_numpy(label_img).long().to(device)
         
-        preds = label_img[v, u] #while we are still finishing up the postprocessing, use this
-        #preds = postprocess(input_img, pred_img, u, v, proj_idx)
+    #     preds = label_img[v, u] #while we are still finishing up the postprocessing, use this
+    #     #preds = postprocess(input_img, pred_img, u, v, proj_idx)
 
-        #save to file set to use with Semantic KITTI API
-        preds = preds.detach().cpu().numpy()
-        save_dir = os.path.join("method_predictions", "sequences", seq, "predictions")
-        os.makedirs(save_dir, exist_ok=True)
-        filepath =  os.path.join(save_dir, f"{scan_name}.label")
-        preds.tofile(filepath)
+    #     #save to file set to use with Semantic KITTI API
+    #     preds = preds.detach().cpu().numpy()
+    #     save_dir = os.path.join("method_predictions", "sequences", seq, "predictions")
+    #     os.makedirs(save_dir, exist_ok=True)
+    #     filepath =  os.path.join(save_dir, f"{scan_name}.label")
+    #     preds.tofile(filepath)
 
 if __name__ == '__main__':
     main()

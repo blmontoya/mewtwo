@@ -4,7 +4,7 @@ H_RANGE = 64
 W_RANGE = 512
 
 # CNN Training Hyperparameters
-NUM_EPOCHS = 2 #they ran 150 epochs in the paper
+NUM_EPOCHS = 80 #they ran 150 epochs in the paper
 BATCH_SIZE = 1
 GAMMA = 0.99 #this was the value used in the paper
 LR = 0.001 #LR of 0.001 in the paper
