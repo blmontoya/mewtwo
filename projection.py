@@ -105,9 +105,10 @@ class RangeData(Dataset):
             remission_proj[..., None]
         ], axis=-1)
         
-        #sbreakpoint()
+        #breakpoint()
 
         input_img = torch.from_numpy(pts).permute(2, 0, 1).float()
+        input_img[0, :, :] = np.log(input_img[0, :, :] + 0.01)
         input_labels = torch.from_numpy(label_proj)
         mask = torch.from_numpy(mask).float()
 

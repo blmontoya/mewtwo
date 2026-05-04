@@ -1,10 +1,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-losses = np.load("train_loss.npy")
+iou1 = np.load("mious40.npy")
+iou2 = np.load("mious.npy")
 
-plt.plot(losses)
+plt.plot(iou1, label="w/ log")
+plt.plot(iou2, label="mean IoU")
 plt.xlabel("Epoch")
 plt.ylabel("Loss")
-plt.title("Training Loss")
-plt.savefig("loss.png")
+plt.title("Mean IoU over Validation Set")
+plt.legend()
+plt.savefig("comparison_of_val.png")

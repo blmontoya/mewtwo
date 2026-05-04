@@ -36,7 +36,7 @@ def main():
     #set which sequences we want as train, val, and test sets
     train = [1,2,3,4,5]
     val = [6,7]
-    test = [2]
+    test = [8,9]
 
     splits = RangeData.get_splits(train, val, test)
     
