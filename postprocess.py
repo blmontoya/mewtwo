@@ -3,6 +3,7 @@ import numpy as np
 import hyperparameters as hp 
 import torch 
 import params as p
+import torch.nn.functional as F
 
 def postprocess(input_img, range_preds, u, v, ranges, device, k=5):
     """
@@ -28,37 +29,18 @@ def postprocess(input_img, range_preds, u, v, ranges, device, k=5):
     #0: pad image so the neighbor extraction doesn't exceed the boundaries 
     S = hp.NBRHOOD_SIZE
     pad = S // 2
-    padded = torch.nn.functional.pad(I_range, (pad, pad, pad, pad), mode="constant", value=0) #experiment with different types of padding
-    padded_labels = torch.nn.functional.pad(I_label, (pad, pad, pad, pad), mode="constant", value=0)
+
+    padded = F.pad(I_range.float()[None, None, :, :], (pad, pad, pad, pad), mode="constant", value=0) #experiment with different types of padding
+    padded_labels = F.pad(I_label.float()[None, None, :, :], (pad, pad, pad, pad), mode="constant", value=0)
 
     #1. create a [h*w, S^2] matrix containing unwrapped version of SxS neighborhood around each point 
     # Each column contains unwrapped version of neighborhood, and the column center contains the actual pixel's range 
-    nbrs = torch.zeros(H * W, S * S, device=device, dtype=I_range.dtype) #output; N' in the algo
-
-    # print("padded shape:", padded.shape)
-    # print("H, W, S:", H, W, S)
-    # #breakpoint()
-
-    for vp in range(H): 
-        for up in range(W): 
-            pixel_idx = vp * W + up
-            patch = padded[vp: vp + S, up: up + S]
-
-            #flatten to S^2 
-            nbrs[pixel_idx, :] = patch.reshape(-1)
+    nbrs = F.unfold(padded, kernel_size=S).squeeze(0).T
 
     #2. Extend representation to a matrix of dim [S^2, N] w/ range neighborhood of all can points 
     # Do this by indexing the unfolded image matrix 
-    N_matrix = torch.zeros(N, S*S, device=device, dtype=I_range.dtype)
-
-    for i in range(N): 
-        ui = u[i]
-        vi = v[i]
-
-        pixel_idx = vi * W + ui #get the row index in nbrs
-
-        #copy the neighborhood from nbrs
-        N_matrix[i, :] = nbrs[pixel_idx, :]
+    pixel_idx = v.long() * W + u.long()
+    N_matrix = nbrs[pixel_idx, :]
 
     #3. Replace center row of matrix with actual range readings for each point 
     # Result: [S^2, N] matrix w/ range readings for points in the center row, and each column has SxS neighborhood
@@ -66,26 +48,9 @@ def postprocess(input_img, range_preds, u, v, ranges, device, k=5):
     N_matrix[:, center_idx] = R
 
     #4. Reshape label matrix to
-    Lp = torch.zeros(H * W, S * S, device=device, dtype=torch.long) #output; L' in the algo
+    Lp = F.unfold(padded_labels, kernel_size=S).squeeze(0).T.long()
 
-    for vp in range(H): 
-        for up in range(W): 
-            pixel_idx = vp * W + up
-            patch = padded_labels[vp: vp + S, up: up + S]
-
-            #flatten to S^2 
-            Lp[pixel_idx, :] = patch.reshape(-1)
-
-    L_matrix = torch.zeros(N, S*S, device=device, dtype=torch.long)
-
-    for i in range(N): 
-        ui = u[i]
-        vi = v[i]
-
-        pixel_idx = vi * W + ui #get the row index in nbrs
-
-        #copy the neighborhood from nbrs
-        L_matrix[i, :] = Lp[pixel_idx, :]
+    L_matrix = Lp[pixel_idx, :]
 
     #5. Compute distance to neighbors D for each point
     D = torch.abs(N_matrix - R[:, None])
