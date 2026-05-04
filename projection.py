@@ -44,7 +44,8 @@ class RangeData(Dataset):
             label -- (H, W) representing label for each projected coordinate (u,v)
             mask -- (H, W) set to "0" if the pixel is empty 
             u -- (N,) u coordinate for each 3D pixel
-            v == (N,) v coordinate for each 3D pixel
+            v -- (N,) v coordinate for each 3D pixel
+            ranges -- (N,) ranges for each 3D pixel 
 
         """
         # 1. Get the scan at the given index and extract the point cloud from it
@@ -114,7 +115,7 @@ class RangeData(Dataset):
 
         u = np.array(u)
         v = np.array(v)
-        return (input_img, input_labels, mask, u, v, scan_name, seq, proj_idx)
+        return (input_img, input_labels, mask, u, v, scan_name, seq, r)
     
     def get_splits():
         return {

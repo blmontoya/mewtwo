@@ -13,3 +13,4 @@ STEP_SIZE = 1 #LR decays every epoch, as per paper
 # KNN Hyperparameters 
 CUT_OFF = 1.0 #maximum allowed distance of a point considered a near neighbor
 NBRHOOD_SIZE = 5 #fix this
+SIGMA = 1.0
