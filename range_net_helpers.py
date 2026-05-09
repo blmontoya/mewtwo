@@ -13,7 +13,6 @@ def train_one_epoch(model, loader, optimizer, criterion, device):
 
         optimizer.zero_grad()
         logits = model(imgs)
-        #breakpoint()
         loss = criterion(logits, labels)
         loss.backward()
         optimizer.step()

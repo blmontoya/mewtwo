@@ -5,7 +5,7 @@ import torch
 import params as p
 import torch.nn.functional as F
 
-def postprocess(input_img, range_preds, u, v, ranges, device, k=5):
+def postprocess(input_img, range_preds, u, v, ranges, device, k=3):
     """
     Runs KNN voting in 3D to clean up label bleeding.
 
@@ -30,7 +30,7 @@ def postprocess(input_img, range_preds, u, v, ranges, device, k=5):
     S = hp.NBRHOOD_SIZE
     pad = S // 2
 
-    padded = F.pad(I_range.float()[None, None, :, :], (pad, pad, pad, pad), mode="constant", value=0) #experiment with different types of padding
+    padded = F.pad(I_range.float()[None, None, :, :], (pad, pad, pad, pad), mode="constant", value=0) #maybe experiment with different types of padding
     padded_labels = F.pad(I_label.float()[None, None, :, :], (pad, pad, pad, pad), mode="constant", value=0)
 
     #1. create a [h*w, S^2] matrix containing unwrapped version of SxS neighborhood around each point 
@@ -47,7 +47,7 @@ def postprocess(input_img, range_preds, u, v, ranges, device, k=5):
     center_idx = (S * S - 1) // 2
     N_matrix[:, center_idx] = R
 
-    #4. Reshape label matrix to
+    #4. Reshape label matrix too
     Lp = F.unfold(padded_labels, kernel_size=S).squeeze(0).T.long()
 
     L_matrix = Lp[pixel_idx, :]
@@ -94,7 +94,6 @@ def postprocess(input_img, range_preds, u, v, ranges, device, k=5):
 
     valid_mask = L_knn >= 0
     point_indices = torch.arange(N, device=device)[:, None].expand(-1, k)
-    #breakpoint()
     V[point_indices[valid_mask], L_knn[valid_mask].long()] += 1
 
     #10. argmax over columns to get [1,N] vector with labels for each point in the input

@@ -3,3 +3,5 @@ semantic-kitti-api/
 method_predictions/
 __pycache__/
 raw_preds/
+new_preds/
+knn_preds/

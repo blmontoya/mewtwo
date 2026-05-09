@@ -18,5 +18,3 @@ def uv_proj(x, y, z, f_down, f, r, w, h):
     v = np.floor(v).astype(np.int32)
 
     return u, v
-
-# ========================================================================
