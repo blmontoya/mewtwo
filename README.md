@@ -1,4 +1,13 @@
-# mewtwo
+# Semantic Segmentation for Autonomous Vehicles
 Final Project for CSCI 1430: Computer Vision
+
+<p align="center">
+  <img width="800" height="600" src=semantic_segmentation.png>
+</p>
+<p align="center">
+  Fig. 1. Project Poster
+  <br>
+  <a href="Semantic_Segmentation-2.pdf"> View full poster (PDF)</a>
+</p>
 
 Semantic segmentation of LiDAR point clouds is a core component of autonomous driving systems, enabling vehicles to have real-time 3D scene understanding. In this project, we implement RangeNet++, a dimensionality reduction approach that projects LiDAR point clouds onto 2D range images. This allows standard convolutional neural networks to perform semantic segmentation at a lower computational cost than models working in 3D space. We train and evaluate our implementation on the SemanticKITTI urban driving benchmark by using an encoder-decoder CNN with Gaussian-weighted kNN post-processing to reduce reprojection error. Due to computational constraints, training was limited to 5 sequences over 70 epochs, requiring approximately 5 hours on OSCAR. After training, our model achieved a peak mIoU of 25% compared to the original paper's 52.2% over 150 epochs and the full dataset. Our results demonstrate that the implementation works well, as the loss curve was still declining, suggesting that additional training time and data would increase performance. We then analyze per-class performance and discuss range image-based segmentation, including reprojection error, class imbalance, and trade-offs with dimensionality reduction.
